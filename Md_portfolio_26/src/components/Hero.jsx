@@ -151,7 +151,7 @@ const Hero = () => {
         {/* Social icons */}
         <div className="flex flex-row gap-5 mt-2" aria-label="Social links">
           <a
-            href="https://github.com"
+            href="https://github.com/Munakaladeepak"
             target="_blank"
             rel="noopener noreferrer"
             className="hero-icon social-icon text-3xl md:text-4xl"
@@ -161,7 +161,7 @@ const Hero = () => {
             <FaGithub />
           </a>
           <a
-            href="https://linkedin.com"
+            href="https://www.linkedin.com/in/m-deepak-7970b931a/"
             target="_blank"
             rel="noopener noreferrer"
             className="hero-icon social-icon text-3xl md:text-4xl"
@@ -171,7 +171,7 @@ const Hero = () => {
             <FaLinkedin />
           </a>
           <a
-            href="mailto:deepak.dev01@gmail.com"
+            href="mailto:munakaladeepak@gmail.com"
             className="hero-icon social-icon text-3xl md:text-4xl"
             style={{ color: 'var(--color-text)' }}
             aria-label="Send email"

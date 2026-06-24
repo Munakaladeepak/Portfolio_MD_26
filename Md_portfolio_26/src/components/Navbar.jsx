@@ -203,7 +203,7 @@ const Navbar = () => {
 
           {/* Desktop CTA */}
           <a
-            href="https://github.com"
+            href="https://github.com/Munakaladeepak"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold"
@@ -263,7 +263,7 @@ const Navbar = () => {
             )
           })}
           <a
-            href="https://github.com"
+            href="https://github.com/Munakaladeepak"
             target="_blank"
             rel="noopener noreferrer"
             style={{
