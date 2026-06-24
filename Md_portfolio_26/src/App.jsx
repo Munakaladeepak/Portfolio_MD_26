@@ -4,6 +4,8 @@ import Hero from './components/Hero'
 import About from './components/About'
 import Skills from './components/Skills'
 import Projects from './components/Projects'
+import Footer from './components/Footer'
+import Feedback from './components/Feedback'
 function App() {
 
   return (
@@ -19,6 +21,9 @@ function App() {
       <br />
       <Projects />
       <br/>
+      <Feedback />
+      <br/>
+      <Footer />
     </div>
     
     </>

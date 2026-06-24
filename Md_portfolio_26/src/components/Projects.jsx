@@ -137,21 +137,32 @@ const Projects = () => {
 
   const experiences = [
     {
-      period: "Jan 2023 – Present",
-      title: "Full Stack Developer",
-      company: "TechNova Solutions",
+      period: "2020 ",
+      title: "10th Grade",
+      company: " The Nandyal Public School",
       points: [
-        "Building scalable web applications using the MERN stack.",
-        "Working on feature development, API integration, and performance optimization.",
+        "Completed the 10th grade in CBSE board with a strong academic record.",
+        "Developed foundational skills in mathematics, science, and language arts.",
       ],
     },
     {
-      period: "Jun 2021 – Dec 2022",
-      title: "Frontend Developer",
-      company: "WebCraft Studio",
+      period: "2021-2024",
+      title: "Diploma in Computer Science (Polytechnic)",
+      company: "SVR ENGINEERING COLLEGE",
       points: [
-        "Developed responsive user interfaces and reusable components.",
-        "Collaborated with designers and backend developers to deliver quality products.",
+        "Enriched my computer science knowledge through a comprehensive diploma program.",
+        "Participated in hands-on projects, enhancing my practical skills in programming and software development.",
+        "Started my journey in web development, focusing on the MERN stack and building responsive web applications.",
+      ],
+    },
+    {
+      period: "2026-Present",
+      title: "Bachelor of Technology (B.Tech) in Computer Science",
+      company: "Santhiram Engineering College",
+      points: [
+        "Learned advanced concepts in computer science, including algorithms, data structures, and software engineering.",
+        "Participated in mutiple coding competitions and hackathons, honing my problem-solving and teamwork skills.",
+        "Gained experience in full-stack web development, working on real-world projects and collaborating with peers to create innovative solutions.",
       ],
     },
   ];
@@ -332,7 +343,7 @@ const Projects = () => {
 
       {/* ── Experience ── */}
       <section style={styles.experienceSection}>
-        <h2 style={styles.sectionHeading}>Experience</h2>
+        <h2 style={styles.sectionHeading}>Education</h2>
         <div style={styles.timeline}>
           {experiences.map((exp, idx) => (
             <div key={idx} style={styles.timelineItem}>
