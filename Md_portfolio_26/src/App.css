@@ -1,0 +1,73 @@
+@import "tailwindcss";
+#body{
+    background-color:#FAF6F0;
+    color:black
+}
+:root {
+  --color-bg:          #F5EFE6;  /* page background */
+  --color-text:        #1C1C1A;  /* headings & body */
+  --color-accent:      #B5451B;  /* buttons, highlights */
+  --color-card:        #FAF6F0;  /* card backgrounds */
+  --color-muted:       #7A6F64;  /* secondary text */
+  --color-border:      #E8DDD0;  /* borders, outlines */
+  --color-decorative:  #C4B9A8;  /* illustrations, dividers */
+  --color-footer:      #2C2420;  /* footer bar */
+}
+@font-face{
+    font-family:"Lobster";
+    src: url("/src/assets/Fonts/Lobster_Two/LobsterTwo-Regular.ttf") format("truetype");
+    font-weight:normal;
+    font-style:normal;
+}
+@font-face{
+    font-family:"playfair";
+    src: url("/src/assets/Fonts/Lobster_Two/static/PlayfairDisplay-Regular.ttf") format("truetype");
+    font-weight:normal;
+    font-style:normal;
+    gap:2
+}
+#Button{
+    background-color: #B5461B;
+    color:white;
+    box-shadow: rgba(14, 63, 126, 0.04) 0px 0px 0px 1px, rgba(42, 51, 69, 0.04) 0px 1px 1px -0.5px, rgba(42, 51, 70, 0.04) 0px 3px 3px -1.5px, rgba(42, 51, 70, 0.04) 0px 6px 6px -3px, rgba(14, 63, 126, 0.04) 0px 12px 12px -6px, rgba(14, 63, 126, 0.04) 0px 24px 24px -12px;
+    border:none;
+}
+
+#Nav{
+    font-family:"playfair";
+    background-color:#FAF6F0;
+    color:#1C1C1A;
+    box-shadow: rgba(17, 17, 26, 0.05) 0px 1px 0px, rgba(17, 17, 26, 0.1) 0px 0px 8px;
+}
+
+#Hero{
+    background-color:#FAF6F0;
+    /* width:100%;
+    height:100vh; */
+    font-family:"playfair"; 
+    /* background-color:#FAF6F0; */
+    /* background-color:#f0d9b8; */
+}
+#imgsec{
+    width:50rem;
+    height:33rem;
+}
+
+@media (max-width: 768px) {
+    #imgsec{
+        width:100%;
+        height:20rem;
+    }
+}
+
+#about{
+    background-color:white;
+    font-family:"playfair";
+   
+}
+#About-img {
+    width:28rem;
+    height:28rem;   
+    border:20px solid #795531dc;
+    box-shadow: rgba(0, 0, 0, 0.56) 0px 22px 70px 4px;
+}
