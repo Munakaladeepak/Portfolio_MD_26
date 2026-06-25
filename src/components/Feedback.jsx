@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '../hooks/useGSAP'
 
+// ─── Inspirational quotes data ───────────────────────────────────────────────
 const QUOTES = [
   {
     text: 'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.',
@@ -18,36 +19,68 @@ const QUOTES = [
   },
 ]
 
+// ─── Design tokens (unchanged from original) ─────────────────────────────────
 const colors = {
-  bg: '#F5F0E8',
-  accent: '#A0522D',
-  accentDark: '#7B3F22',
-  text: '#2C2C2C',
-  muted: '#6B6B6B',
-  border: '#D6CFC4',
-  cardBg: '#FDFAF5',
+  bg:        '#F5F0E8',
+  accent:    '#A0522D',
+  accentDark:'#7B3F22',
+  text:      '#2C2C2C',
+  muted:     '#6B6B6B',
+  border:    '#D6CFC4',
+  cardBg:    '#FDFAF5',
   quoteIcon: '#C4956A',
-  inputBg: '#FFFFFF',
+  inputBg:   '#FFFFFF',
+  errorText: '#B91C1C',
+  errorBg:   '#FEF2F2',
+  successBg: '#F0FDF4',
+  successText:'#15803D',
 }
 
+// ─── Email validation helper ──────────────────────────────────────────────────
+const isValidEmail = (email) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+
+// ─── Sanitize: trim + basic strip ────────────────────────────────────────────
+const sanitize = (str) => str.trim().replace(/[<>]/g, '')
+
+// ─── Initial form state ───────────────────────────────────────────────────────
+const INITIAL_FORM = { name: '', email: '', subject: '', message: '' }
+const INITIAL_ERRORS = { name: '', email: '', subject: '', message: '' }
+
 /**
- * Feedback — Inspirational Quotes + contact form section.
+ * Feedback — Inspirational Quotes + Contact Form section.
  *
  * GSAP ScrollTrigger:
  *  - Section heading fades up
  *  - Quote cards stagger up
  *  - Form fields stagger up
  *  - Contact column slides from right
+ *
+ * FormSubmit (AJAX):
+ *  - POST to https://formsubmit.co/ajax/munakaladeepak@gmail.com
+ *  - No page redirect, no CAPTCHA
+ *  - Honeypot spam protection
+ *  - Client-side validation with inline error messages
+ *  - Loading / success / error states with GSAP fade-in
  */
 const Feedback = () => {
-  const [form, setForm]           = useState({ name: '', email: '', message: '' })
+  // ── Quote carousel state ─────────────────────────────────────────────────
   const [activeIdx, setActiveIdx] = useState(0)
-  const feedbackRef               = useRef(null)
   const quoteCardRef              = useRef(null)
+
+  // ── Form state ───────────────────────────────────────────────────────────
+  const [form,     setForm]     = useState(INITIAL_FORM)
+  const [errors,   setErrors]   = useState(INITIAL_ERRORS)
+  const [status,   setStatus]   = useState('idle') // 'idle' | 'loading' | 'success' | 'error'
+  const [submitting, setSubmitting] = useState(false)
+
+  // ── Refs ─────────────────────────────────────────────────────────────────
+  const feedbackRef  = useRef(null)
+  const notifRef     = useRef(null)
 
   const quote = QUOTES[activeIdx]
 
-  /* Crossfade to a new quote — mirrors the old testimonial goTo() */
+  // ── Quote crossfade (unchanged) ──────────────────────────────────────────
   const goTo = (idx) => {
     const card = quoteCardRef.current
     if (!card) { setActiveIdx(idx); return }
@@ -71,17 +104,116 @@ const Feedback = () => {
     })
   }
 
+  // ── Animate notification banner (success / error) ─────────────────────────
+  const animateNotif = useCallback(() => {
+    if (!notifRef.current) return
+    gsap.fromTo(
+      notifRef.current,
+      { autoAlpha: 0, y: -10 },
+      { autoAlpha: 1, y: 0, duration: 0.35, ease: 'power2.out' }
+    )
+  }, [])
+
+  // ── Field change handler ──────────────────────────────────────────────────
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+    // Clear field-level error on change
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    }
   }
 
-  const handleSubmit = (e) => {
+  // ── Client-side validation ────────────────────────────────────────────────
+  const validate = () => {
+    const errs = { name: '', email: '', subject: '', message: '' }
+    let valid = true
+
+    if (!form.name.trim()) {
+      errs.name = 'Full name is required.'
+      valid = false
+    }
+    if (!form.email.trim()) {
+      errs.email = 'Email address is required.'
+      valid = false
+    } else if (!isValidEmail(form.email)) {
+      errs.email = 'Please enter a valid email address.'
+      valid = false
+    }
+    if (!form.subject.trim()) {
+      errs.subject = 'Subject is required.'
+      valid = false
+    }
+    if (!form.message.trim()) {
+      errs.message = 'Message cannot be empty.'
+      valid = false
+    }
+
+    setErrors(errs)
+    return valid
+  }
+
+  // ── Form submission via AJAX fetch ────────────────────────────────────────
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert("Message sent! I'll get back to you soon.")
-    setForm({ name: '', email: '', message: '' })
+
+    // Prevent duplicate rapid submissions
+    if (submitting) return
+
+    // Client-side validation
+    if (!validate()) return
+
+    setSubmitting(true)
+    setStatus('loading')
+
+    // Build sanitized payload
+    const payload = {
+      name:    sanitize(form.name),
+      email:   sanitize(form.email),
+      subject: sanitize(form.subject),
+      message: sanitize(form.message),
+      // FormSubmit hidden config fields
+      _subject:  'New Portfolio Contact Form Submission',
+      _captcha:  'false',
+      // Honeypot — must remain empty to pass spam filter
+      _honey:    '',
+    }
+
+    try {
+      const response = await fetch(
+        'https://formsubmit.co/ajax/munakaladeepak@gmail.com',
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept:         'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      if (response.ok) {
+        setStatus('success')
+        setForm(INITIAL_FORM)
+        setErrors(INITIAL_ERRORS)
+      } else {
+        setStatus('error')
+      }
+    } catch {
+      setStatus('error')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  /* ScrollTrigger animations */
+  // ── Animate the notification whenever status changes ──────────────────────
+  // We use a layout-effect-like pattern via the GSAP hook dependency
+  useGSAP(
+    () => { if (status === 'success' || status === 'error') animateNotif() },
+    { dependencies: [status] }
+  )
+
+  // ── ScrollTrigger animations (unchanged from original) ───────────────────
   useGSAP(
     () => {
       const prefersReducedMotion = window.matchMedia(
@@ -119,6 +251,22 @@ const Feedback = () => {
     { scope: feedbackRef }
   )
 
+  // ── Shared input style (unchanged from original) ─────────────────────────
+  const inputStyle = {
+    backgroundColor: colors.inputBg,
+    border:          `1px solid ${colors.border}`,
+    borderRadius:    '8px',
+    padding:         '14px 16px',
+    fontSize:        '14px',
+    color:           colors.text,
+    fontFamily:      'inherit',
+    width:           '100%',
+    boxSizing:       'border-box',
+  }
+
+  // ── Derived button state ─────────────────────────────────────────────────
+  const isLoading = status === 'loading' || submitting
+
   return (
     <section
       ref={feedbackRef}
@@ -126,8 +274,8 @@ const Feedback = () => {
       aria-label="Inspirational Quotes and Contact"
       style={{
         backgroundColor: colors.bg,
-        padding: '72px 24px',
-        fontFamily: "'Georgia', serif",
+        padding:         '72px 24px',
+        fontFamily:      "'Georgia', serif",
       }}
     >
       <div style={{ maxWidth: '1140px', margin: '0 auto' }}>
@@ -136,12 +284,12 @@ const Feedback = () => {
         <h2
           className="feedback-heading"
           style={{
-            fontSize: 'clamp(28px, 4vw, 42px)',
-            fontWeight: '700',
-            color: colors.text,
-            marginBottom: '12px',
+            fontSize:      'clamp(28px, 4vw, 42px)',
+            fontWeight:    '700',
+            color:         colors.text,
+            marginBottom:  '12px',
             letterSpacing: '-0.5px',
-            lineHeight: 1.15,
+            lineHeight:    1.15,
           }}
         >
           Inspirational Quotes
@@ -149,11 +297,11 @@ const Feedback = () => {
         <p
           className="feedback-subtitle"
           style={{
-            color: colors.muted,
-            fontSize: '1rem',
-            lineHeight: 1.7,
+            color:        colors.muted,
+            fontSize:     '1rem',
+            lineHeight:   1.7,
             marginBottom: '48px',
-            maxWidth: '620px',
+            maxWidth:     '620px',
           }}
         >
           A few principles and ideas that inspire my approach to learning, building, and solving problems.
@@ -168,23 +316,23 @@ const Feedback = () => {
             className="quote-card"
             style={{
               backgroundColor: colors.cardBg,
-              border: `1px solid ${colors.border}`,
-              borderRadius: '14px',
-              padding: '28px 26px 24px',
-              boxShadow: '0 2px 14px rgba(0,0,0,0.05)',
-              marginBottom: '20px',
+              border:          `1px solid ${colors.border}`,
+              borderRadius:    '14px',
+              padding:         '28px 26px 24px',
+              boxShadow:       '0 2px 14px rgba(0,0,0,0.05)',
+              marginBottom:    '20px',
             }}
           >
             {/* Opening quote mark */}
             <span
               aria-hidden="true"
               style={{
-                fontSize: '52px',
-                lineHeight: 1,
-                color: colors.quoteIcon,
-                display: 'block',
+                fontSize:     '52px',
+                lineHeight:   1,
+                color:        colors.quoteIcon,
+                display:      'block',
                 marginBottom: '8px',
-                opacity: 0.85,
+                opacity:      0.85,
               }}
             >
               ❝
@@ -193,11 +341,11 @@ const Feedback = () => {
             {/* Quote text */}
             <p
               style={{
-                color: colors.muted,
-                fontSize: '15px',
-                lineHeight: 1.75,
+                color:        colors.muted,
+                fontSize:     '15px',
+                lineHeight:   1.75,
                 marginBottom: '24px',
-                fontStyle: 'italic',
+                fontStyle:    'italic',
               }}
             >
               {quote.text}
@@ -209,18 +357,18 @@ const Feedback = () => {
               <div
                 aria-hidden="true"
                 style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '50%',
+                  width:           '42px',
+                  height:          '42px',
+                  borderRadius:    '50%',
                   backgroundColor: colors.accent,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  flexShrink: 0,
-                  fontFamily: "'Arial', sans-serif",
+                  display:         'flex',
+                  alignItems:      'center',
+                  justifyContent:  'center',
+                  color:           '#fff',
+                  fontWeight:      '700',
+                  fontSize:        '16px',
+                  flexShrink:      0,
+                  fontFamily:      "'Arial', sans-serif",
                 }}
               >
                 {quote.author[0]}
@@ -247,14 +395,14 @@ const Feedback = () => {
                 aria-label={`Quote ${i + 1}`}
                 onClick={() => goTo(i)}
                 style={{
-                  width: i === activeIdx ? '28px' : '10px',
-                  height: '10px',
-                  borderRadius: '5px',
-                  border: 'none',
-                  cursor: 'pointer',
+                  width:           i === activeIdx ? '28px' : '10px',
+                  height:          '10px',
+                  borderRadius:    '5px',
+                  border:          'none',
+                  cursor:          'pointer',
                   backgroundColor: i === activeIdx ? colors.accent : colors.border,
-                  transition: 'width 0.25s ease, background-color 0.2s ease',
-                  padding: 0,
+                  transition:      'width 0.25s ease, background-color 0.2s ease',
+                  padding:         0,
                 }}
               />
             ))}
@@ -266,136 +414,316 @@ const Feedback = () => {
         <div className="contact-col">
           <h3
             style={{
-              fontSize: '1.35rem',
-              fontWeight: '700',
-              color: colors.text,
+              fontSize:     '1.35rem',
+              fontWeight:   '700',
+              color:        colors.text,
               marginBottom: '24px',
             }}
           >
-            Let's Connect
+            Let&rsquo;s Connect
           </h3>
 
-          <form onSubmit={handleSubmit} noValidate>
-            {/* Name + Email row */}
+          {/* ── Notification banner (success / error) ── */}
+          {(status === 'success' || status === 'error') && (
+            <div
+              ref={notifRef}
+              role="alert"
+              aria-live="polite"
+              style={{
+                padding:         '14px 18px',
+                borderRadius:    '8px',
+                marginBottom:    '20px',
+                fontSize:        '14px',
+                fontWeight:      '600',
+                backgroundColor: status === 'success' ? colors.successBg : colors.errorBg,
+                color:           status === 'success' ? colors.successText : colors.errorText,
+                border:          `1px solid ${status === 'success' ? '#BBF7D0' : '#FECACA'}`,
+                display:         'flex',
+                alignItems:      'center',
+                gap:             '10px',
+              }}
+            >
+              {/* Icon */}
+              <span aria-hidden="true" style={{ fontSize: '18px', flexShrink: 0 }}>
+                {status === 'success' ? '✓' : '✕'}
+              </span>
+              {status === 'success'
+                ? 'Message sent successfully. Thank you for reaching out.'
+                : 'Failed to send message. Please try again later.'}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate aria-label="Contact form">
+
+            {/* ── Honeypot field — hidden from users, catches bots ── */}
+            <input
+              type="text"
+              name="_honey"
+              defaultValue=""
+              style={{ display: 'none' }}
+              tabIndex={-1}
+              aria-hidden="true"
+              autoComplete="off"
+            />
+
+            {/* ── Name + Email row ── */}
             <div
               style={{
-                display: 'grid',
+                display:             'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '14px',
-                marginBottom: '14px',
+                gap:                 '14px',
+                marginBottom:        '14px',
               }}
               className="form-field"
             >
-              <input
-                type="text"
-                name="name"
-                placeholder="Your Name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                className="form-input"
-                style={{
-                  backgroundColor: colors.inputBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '8px',
-                  padding: '14px 16px',
-                  fontSize: '14px',
-                  color: colors.text,
-                  fontFamily: 'inherit',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-                aria-label="Your name"
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Your Email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                className="form-input"
-                style={{
-                  backgroundColor: colors.inputBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '8px',
-                  padding: '14px 16px',
-                  fontSize: '14px',
-                  color: colors.text,
-                  fontFamily: 'inherit',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-                aria-label="Your email"
-              />
+              {/* Full Name */}
+              <div>
+                <label
+                  htmlFor="contact-name"
+                  style={{
+                    display:      'block',
+                    marginBottom: '6px',
+                    fontSize:     '13px',
+                    fontWeight:   '600',
+                    color:        colors.muted,
+                  }}
+                >
+                  Full Name <span aria-hidden="true" style={{ color: colors.errorText }}>*</span>
+                </label>
+                <input
+                  id="contact-name"
+                  type="text"
+                  name="name"
+                  placeholder="Your Name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  className="form-input"
+                  style={{
+                    ...inputStyle,
+                    borderColor: errors.name ? colors.errorText : colors.border,
+                  }}
+                  aria-required="true"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? 'error-name' : undefined}
+                  autoComplete="name"
+                  disabled={isLoading}
+                />
+                {errors.name && (
+                  <p
+                    id="error-name"
+                    role="alert"
+                    style={{ color: colors.errorText, fontSize: '12px', marginTop: '4px' }}
+                  >
+                    {errors.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Email Address */}
+              <div>
+                <label
+                  htmlFor="contact-email"
+                  style={{
+                    display:      'block',
+                    marginBottom: '6px',
+                    fontSize:     '13px',
+                    fontWeight:   '600',
+                    color:        colors.muted,
+                  }}
+                >
+                  Email Address <span aria-hidden="true" style={{ color: colors.errorText }}>*</span>
+                </label>
+                <input
+                  id="contact-email"
+                  type="email"
+                  name="email"
+                  placeholder="Your Email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  className="form-input"
+                  style={{
+                    ...inputStyle,
+                    borderColor: errors.email ? colors.errorText : colors.border,
+                  }}
+                  aria-required="true"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'error-email' : undefined}
+                  autoComplete="email"
+                  disabled={isLoading}
+                />
+                {errors.email && (
+                  <p
+                    id="error-email"
+                    role="alert"
+                    style={{ color: colors.errorText, fontSize: '12px', marginTop: '4px' }}
+                  >
+                    {errors.email}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Message */}
-            <textarea
-              name="message"
-              placeholder="Your Message"
-              value={form.message}
-              onChange={handleChange}
-              required
-              rows={6}
-              className="form-input form-field"
-              style={{
-                backgroundColor: colors.inputBg,
-                border: `1px solid ${colors.border}`,
-                borderRadius: '8px',
-                padding: '14px 16px',
-                fontSize: '14px',
-                color: colors.text,
-                resize: 'vertical',
-                fontFamily: 'inherit',
-                width: '100%',
-                boxSizing: 'border-box',
-                marginBottom: '14px',
-                display: 'block',
-              }}
-              aria-label="Your message"
-            />
+            {/* ── Subject ── */}
+            <div className="form-field" style={{ marginBottom: '14px' }}>
+              <label
+                htmlFor="contact-subject"
+                style={{
+                  display:      'block',
+                  marginBottom: '6px',
+                  fontSize:     '13px',
+                  fontWeight:   '600',
+                  color:        colors.muted,
+                }}
+              >
+                Subject <span aria-hidden="true" style={{ color: colors.errorText }}>*</span>
+              </label>
+              <input
+                id="contact-subject"
+                type="text"
+                name="subject"
+                placeholder="What is this about?"
+                value={form.subject}
+                onChange={handleChange}
+                required
+                className="form-input"
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.subject ? colors.errorText : colors.border,
+                }}
+                aria-required="true"
+                aria-invalid={!!errors.subject}
+                aria-describedby={errors.subject ? 'error-subject' : undefined}
+                disabled={isLoading}
+              />
+              {errors.subject && (
+                <p
+                  id="error-subject"
+                  role="alert"
+                  style={{ color: colors.errorText, fontSize: '12px', marginTop: '4px' }}
+                >
+                  {errors.subject}
+                </p>
+              )}
+            </div>
 
-            {/* Submit */}
+            {/* ── Message ── */}
+            <div className="form-field" style={{ marginBottom: '14px' }}>
+              <label
+                htmlFor="contact-message"
+                style={{
+                  display:      'block',
+                  marginBottom: '6px',
+                  fontSize:     '13px',
+                  fontWeight:   '600',
+                  color:        colors.muted,
+                }}
+              >
+                Message <span aria-hidden="true" style={{ color: colors.errorText }}>*</span>
+              </label>
+              <textarea
+                id="contact-message"
+                name="message"
+                placeholder="Your Message"
+                value={form.message}
+                onChange={handleChange}
+                required
+                rows={6}
+                className="form-input"
+                style={{
+                  ...inputStyle,
+                  resize:      'vertical',
+                  display:     'block',
+                  borderColor: errors.message ? colors.errorText : colors.border,
+                }}
+                aria-required="true"
+                aria-invalid={!!errors.message}
+                aria-describedby={errors.message ? 'error-message' : undefined}
+                disabled={isLoading}
+              />
+              {errors.message && (
+                <p
+                  id="error-message"
+                  role="alert"
+                  style={{ color: colors.errorText, fontSize: '12px', marginTop: '4px' }}
+                >
+                  {errors.message}
+                </p>
+              )}
+            </div>
+
+            {/* ── Submit button ── */}
             <button
               type="submit"
+              id="contact-submit"
               className="submit-btn form-field"
+              disabled={isLoading}
+              aria-disabled={isLoading}
               style={{
                 backgroundColor: colors.accent,
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '16px',
-                width: '100%',
-                fontSize: '15px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                letterSpacing: '0.3px',
-                fontFamily: 'inherit',
+                color:           '#FFFFFF',
+                border:          'none',
+                borderRadius:    '8px',
+                padding:         '16px',
+                width:           '100%',
+                fontSize:        '15px',
+                fontWeight:      '700',
+                cursor:          isLoading ? 'not-allowed' : 'pointer',
+                letterSpacing:   '0.3px',
+                fontFamily:      'inherit',
+                opacity:         isLoading ? 0.72 : 1,
+                display:         'flex',
+                alignItems:      'center',
+                justifyContent:  'center',
+                gap:             '10px',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.accentDark)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.accent)}
+              onMouseEnter={(e) => {
+                if (!isLoading) e.currentTarget.style.backgroundColor = colors.accentDark
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = colors.accent
+              }}
             >
-              Send Message
+              {/* Loading spinner */}
+              {isLoading && (
+                <svg
+                  aria-hidden="true"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  style={{
+                    animation: 'spin 0.8s linear infinite',
+                  }}
+                >
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+              )}
+              {isLoading ? 'Sending…' : 'Send Message'}
             </button>
           </form>
 
-          {/* Divider */}
+          {/* ── Divider ── */}
           <hr
             style={{
-              border: 'none',
+              border:    'none',
               borderTop: `1px solid ${colors.border}`,
-              margin: '28px 0',
+              margin:    '28px 0',
             }}
           />
 
-          {/* Contact info */}
+          {/* ── Contact info ── */}
           <div
             style={{
-              display: 'flex',
+              display:    'flex',
               alignItems: 'center',
-              gap: '20px',
-              flexWrap: 'wrap',
+              gap:        '20px',
+              flexWrap:   'wrap',
             }}
           >
             {/* Email */}
